@@ -552,6 +552,19 @@ tstatic otrng_err store_enc_keys(m_enc_key_p enc_key, key_manager_s *manager,
     return ERROR;
   }
 
+  list_element_s *temp_list = manager->skipped_keys;
+  if (temp_list) {
+      printf("I'm HERE!");
+    while (temp_list) {
+      skipped_keys_s *skipped_keys = temp_list->data;
+      if ((skipped_keys->j == manager->j) && (skipped_keys->i == manager->i)) {
+        memcpy(enc_key, skipped_keys->m_enc_key, ENC_KEY_BYTES);
+        return SUCCESS;
+      }
+      temp_list = temp_list->next;
+    }
+  }
+
   if (!(memcmp(manager->current->chain_r, zero_buff,
                sizeof(manager->current->chain_r)) == 0)) {
     while (manager->k < until) {

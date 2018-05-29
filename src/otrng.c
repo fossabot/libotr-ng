@@ -1329,6 +1329,7 @@ tstatic otrng_err decrypt_non_interactive_auth_message(
   otrng_key_manager_derive_chain_keys(enc_key, mac_key, otr->keys, 0,
                                       OTRNG_RECEIVING);
   otr->keys->k++;
+
   // TODO: only when dh ratchet
   otr->keys->pn = auth->message_id;
 
