@@ -212,35 +212,22 @@ INTERNAL otrng_err otrng_rsig_authenticate(
   // c2 = is_A2 ? c - c1 - c3 : c2
   // c3 = is_A3 ? c - c1 - c2 : c3
 
-  goldilocks_448_scalar_p tmp_c1, tmp_c2, tmp_c3;
-  calculate_ci(tmp_c1, c, c1, is_A1, c2, c3);
-  calculate_ci(tmp_c2, c, c2, is_A2, c1, c3);
-  calculate_ci(tmp_c3, c, c3, is_A3, c1, c2);
-
-  goldilocks_448_scalar_copy(dst->c1, tmp_c1);
-  goldilocks_448_scalar_copy(dst->c2, tmp_c2);
-  goldilocks_448_scalar_copy(dst->c3, tmp_c3);
+  calculate_ci(dst->c1, c, c1, is_A1, c2, c3);
+  calculate_ci(dst->c2, c, c2, is_A2, c1, c3);
+  calculate_ci(dst->c3, c, c3, is_A3, c1, c2);
 
   goldilocks_448_scalar_destroy(c);
   goldilocks_448_scalar_destroy(c1);
   goldilocks_448_scalar_destroy(c2);
   goldilocks_448_scalar_destroy(c3);
-  goldilocks_448_scalar_destroy(tmp_c1);
-  goldilocks_448_scalar_destroy(tmp_c2);
-  goldilocks_448_scalar_destroy(tmp_c3);
 
   // t1 = secretIs1 ? t1 - c1 * secret : t1
   // t2 = secretIs2 ? t2 - c2 * secret : t2
   // t3 = secretIs3 ? t3 - c3 * secret : t3
 
-  goldilocks_448_scalar_p tmp_r1, tmp_r2, tmp_r3;
-  calculate_ri(tmp_r1, secret, r1, is_A1, dst->c1, t1);
-  calculate_ri(tmp_r2, secret, r2, is_A2, dst->c2, t2);
-  calculate_ri(tmp_r3, secret, r3, is_A3, dst->c3, t3);
-
-  goldilocks_448_scalar_copy(dst->r1, tmp_r1);
-  goldilocks_448_scalar_copy(dst->r2, tmp_r2);
-  goldilocks_448_scalar_copy(dst->r3, tmp_r3);
+  calculate_ri(dst->r1, secret, r1, is_A1, dst->c1, t1);
+  calculate_ri(dst->r2, secret, r2, is_A2, dst->c2, t2);
+  calculate_ri(dst->r3, secret, r3, is_A3, dst->c3, t3);
 
   goldilocks_448_scalar_destroy(t1);
   goldilocks_448_scalar_destroy(t2);
@@ -248,9 +235,6 @@ INTERNAL otrng_err otrng_rsig_authenticate(
   goldilocks_448_scalar_destroy(r1);
   goldilocks_448_scalar_destroy(r2);
   goldilocks_448_scalar_destroy(r3);
-  goldilocks_448_scalar_destroy(tmp_r1);
-  goldilocks_448_scalar_destroy(tmp_r2);
-  goldilocks_448_scalar_destroy(tmp_r3);
 
   return SUCCESS;
 }
