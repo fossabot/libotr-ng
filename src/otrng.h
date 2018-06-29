@@ -78,11 +78,6 @@ typedef struct otrng_header_s {
   uint8_t type;
 } otrng_header_s, otrng_header_p[1];
 
-INTERNAL otrng_s *otrng_new(struct otrng_client_state_s *state,
-                            otrng_policy_s policy);
-
-INTERNAL void otrng_free(/*@only@ */ otrng_s *otr);
-
 INTERNAL otrng_err otrng_build_query_message(string_p *dst,
                                              const string_p message,
                                              otrng_s *otr);

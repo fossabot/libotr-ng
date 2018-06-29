@@ -20,11 +20,103 @@
 
 #include "protocol.h"
 
+#include <libotr/b64.h>
+
 #include "data_message.h"
 #include "padding.h"
 #include "random.h"
 #include "serialize.h"
-#include <libotr/b64.h>
+
+static otrng_conversation_state_s *
+otrng_conversation_new(otrng_client_state_s *state) {
+  otrng_conversation_state_s *conversation =
+      malloc(sizeof(otrng_conversation_state_s));
+  conversation->client = state;
+  conversation->peer = NULL;
+
+  return conversation;
+}
+
+INTERNAL otrng_s *otrng_new(otrng_client_state_s *state,
+                            otrng_policy_s policy) {
+  otrng_s *otr = malloc(sizeof(otrng_s));
+  if (!otr) {
+    return NULL;
+  }
+
+  otr->conversation = otrng_conversation_new(state);
+  otr->state = OTRNG_STATE_START;
+  otr->running_version = 0;
+  otr->supported_versions = policy.allows;
+
+  otr->their_instance_tag = 0;
+  otr->our_instance_tag = otrng_client_state_get_instance_tag(state);
+
+  otr->their_prekeys_id = 0;
+  otr->their_client_profile = NULL;
+  otr->their_prekey_profile = NULL;
+
+  otr->keys = otrng_key_manager_new();
+  otrng_smp_protocol_init(otr->smp);
+
+  otr->pending_fragments = NULL;
+  otr->v3_conn = NULL;
+
+  otr->ignore_msg = 0;
+
+  otr->shared_session_state = NULL;
+  otr->sending_init_msg = NULL;
+  otr->receiving_init_msg = NULL;
+
+  return otr;
+}
+
+static void free_fragment_context(void *p) { otrng_fragment_context_free(p); }
+
+INTERNAL void otrng_destroy(/*@only@ */ otrng_s *otr) {
+  if (otr->conversation) {
+    free(otr->conversation->peer);
+    free(otr->conversation);
+    otr->conversation = NULL;
+  }
+
+  otrng_key_manager_free(otr->keys);
+  otr->keys = NULL;
+
+  otrng_client_profile_free(otr->their_client_profile);
+  otr->their_client_profile = NULL;
+
+  otrng_prekey_profile_free(otr->their_prekey_profile);
+  otr->their_prekey_profile = NULL;
+
+  otrng_smp_destroy(otr->smp);
+
+  otrng_list_free(otr->pending_fragments, free_fragment_context);
+  otr->pending_fragments = NULL;
+
+  otrng_v3_conn_free(otr->v3_conn);
+  otr->v3_conn = NULL;
+
+  free(otr->shared_session_state);
+  otr->shared_session_state = NULL;
+
+  // TODO: @freeing should we free this after being used by phi?
+  free(otr->sending_init_msg);
+  otr->sending_init_msg = NULL;
+
+  // TODO: @freeing should we free this after being used by phi?;
+  free(otr->receiving_init_msg);
+  otr->receiving_init_msg = NULL;
+}
+
+INTERNAL void otrng_free(/*@only@ */ otrng_s *otr) {
+  if (!otr) {
+    return;
+  }
+
+  otrng_destroy(otr);
+  free(otr);
+}
 
 tstatic void create_privkey_cb_v4(const otrng_conversation_state_s *conv) {
   if (!conv || !conv->client || !conv->client->callbacks) {

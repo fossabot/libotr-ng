@@ -90,6 +90,11 @@ typedef struct otrng_s {
   char *shared_session_state;
 } otrng_s, otrng_p[1];
 
+INTERNAL otrng_s *otrng_new(struct otrng_client_state_s *state,
+                            otrng_policy_s policy);
+
+INTERNAL void otrng_free(/*@only@ */ otrng_s *otr);
+
 INTERNAL void maybe_create_keys(const otrng_conversation_state_s *conv);
 
 INTERNAL const client_profile_s *get_my_client_profile(otrng_s *otr);
