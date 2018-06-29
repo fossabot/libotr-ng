@@ -18,32 +18,20 @@
  *  along with this library.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef OTRNG_INSTANCE_TAG_H
-#define OTRNG_INSTANCE_TAG_H
-
-#include <stdint.h>
-#include <stdio.h>
+#ifndef OTRNG_RECEIVE_H
+#define OTRNG_RECEIVE_H
 
 #include "error.h"
+#include "protocol.h"
+#include "send.h"
 #include "shared.h"
 
-#define OTRNG_MIN_VALID_INSTAG 0x00000100
+//#include "dake_protocol.h"
+//#include "prekey_ensemble.h"
+//#include "tlv.h"
 
-typedef struct otrng_instag_s {
-  char *account;
-  char *protocol;
-  unsigned int value;
-} otrng_instag_s, otrng_instag_p[1];
-
-INTERNAL otrng_bool valid_instance_tag(uint32_t instance_tag);
-
-API otrng_bool otrng_instag_get(otrng_instag_s *otrng_instag,
-                                const char *account, const char *protocol,
-                                FILE *filename);
-
-API void otrng_instag_free(otrng_instag_s *instag);
-
-#ifdef OTRNG_INSTANCE_TAG_PRIVATE
-#endif
+INTERNAL otrng_err otrng_receive_defragmented_message(
+    otrng_response_s *response, otrng_notif notif, const string_p message,
+    otrng_s *otr);
 
 #endif

@@ -26,6 +26,24 @@
 #include "v3.h"
 
 typedef enum {
+  OTRNG_WARN_NONE = 0,
+  OTRNG_WARN_RECEIVED_UNENCRYPTED,
+  OTRNG_WARN_RECEIVED_NOT_VALID,
+} otrng_warning;
+
+// TODO: @refactoring The use of "response" as the type name is confusing:
+// - to_display is the RECEIVED plaintext
+// - tlvs is the RECEIVED list of TLVs
+// - warning is a warning due the RECEIVAL of the message
+// - to_send is the RESPONSE we send in response to the RECEIVED tlvs.
+typedef struct otrng_response_s {
+  string_p to_display;
+  string_p to_send;
+  tlv_list_s *tlvs;
+  otrng_warning warning;
+} otrng_response_s, otrng_response_p[1];
+
+typedef enum {
   OTRNG_STATE_NONE = 0,
   OTRNG_STATE_START = 1,
   OTRNG_STATE_ENCRYPTED_MESSAGES = 2,
@@ -90,16 +108,45 @@ typedef struct otrng_s {
   char *shared_session_state;
 } otrng_s, otrng_p[1];
 
+typedef struct otrng_header_s {
+  otrng_supported_version version;
+  uint8_t type;
+} otrng_header_s, otrng_header_p[1];
+
 INTERNAL otrng_s *otrng_new(struct otrng_client_state_s *state,
                             otrng_policy_s policy);
 
 INTERNAL void otrng_free(/*@only@ */ otrng_s *otr);
 
+INTERNAL const char *otrng_get_shared_session_state(otrng_s *otr);
+
+INTERNAL otrng_err generate_phi_serialized(uint8_t **dst, size_t *dst_len,
+                                           const char *phi_prime,
+                                           const char *init_msg,
+                                           uint16_t instance_tag1,
+                                           uint16_t instance_tag2);
+
+INTERNAL int allow_version(const otrng_s *otr, otrng_supported_version version);
+
 INTERNAL void maybe_create_keys(const otrng_conversation_state_s *conv);
+
+INTERNAL otrng_err received_sender_instance_tag(uint32_t their_instance_tag,
+                                                otrng_s *otr);
+
+INTERNAL otrng_err generate_phi_receiving(uint8_t **dst, size_t *dst_len,
+                                          otrng_s *otr);
+
+INTERNAL void forget_our_keys(otrng_s *otr);
 
 INTERNAL const client_profile_s *get_my_client_profile(otrng_s *otr);
 
+INTERNAL const otrng_prekey_profile_s *get_my_prekey_profile(otrng_s *otr);
+
 INTERNAL struct goldilocks_448_point_s *our_ecdh(const otrng_s *otr);
+
+INTERNAL dh_public_key_p their_dh(const otrng_s *otr);
+
+INTERNAL struct goldilocks_448_point_s *their_ecdh(const otrng_s *otr);
 
 INTERNAL dh_public_key_p our_dh(const otrng_s *otr);
 
@@ -109,7 +156,16 @@ INTERNAL otrng_err otrng_prepare_to_send_data_message(
 
 INTERNAL void otrng_error_message(string_p *to_send, otrng_err_code err_code);
 
+INTERNAL otrng_response_s *otrng_response_new(void);
+
+INTERNAL void otrng_response_free(otrng_response_s *response);
+
+INTERNAL otrng_err double_ratcheting_init(otrng_s *otr, const char participant);
+
 #ifdef OTRNG_PROTOCOL_PRIVATE
+
+tstatic otrng_shared_session_state_s
+otrng_get_shared_session_state_cb(otrng_s *otr);
 
 tstatic otrng_err serialize_and_encode_data_msg(string_p *dst,
                                                 const m_mac_key_p mac_key,

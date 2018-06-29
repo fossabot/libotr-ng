@@ -28,6 +28,7 @@ test_SOURCES = test.c \
 		     ../client_state.c \
 		     ../dake.c \
 		     ../data_message.c \
+		     ../send.c \
 		     ../deserialize.c \
 		     ../dh.c \
 		     ../ed448.c \
@@ -45,6 +46,7 @@ test_SOURCES = test.c \
 		     ../prekey_ensemble.c \
 		     ../prekey_profile.c \
 		     ../protocol.c \
+		     ../receive.c \
 		     ../serialize.c \
 		     ../shake.c \
 		     ../smp.c \

@@ -30,6 +30,8 @@
 #include "prekey_ensemble.h"
 #include "prekey_profile.h"
 #include "protocol.h"
+#include "receive.h"
+#include "send.h"
 #include "shared.h"
 #include "smp.h"
 #include "str.h"
@@ -55,48 +57,13 @@ typedef struct otrng_server_s {
 } otrng_server_s, otrng_server_p[1];
 // clang-format on
 
-typedef enum {
-  OTRNG_WARN_NONE = 0,
-  OTRNG_WARN_RECEIVED_UNENCRYPTED,
-  OTRNG_WARN_RECEIVED_NOT_VALID,
-} otrng_warning;
-
-// TODO: @refactoring The use of "response" as the type name is confusing:
-// - to_display is the RECEIVED plaintext
-// - tlvs is the RECEIVED list of TLVs
-// - warning is a warning due the RECEIVAL of the message
-// - to_send is the RESPONSE we send in response to the RECEIVED tlvs.
-typedef struct otrng_response_s {
-  string_p to_display;
-  string_p to_send;
-  tlv_list_s *tlvs;
-  otrng_warning warning;
-} otrng_response_s, otrng_response_p[1];
-
-typedef struct otrng_header_s {
-  otrng_supported_version version;
-  uint8_t type;
-} otrng_header_s, otrng_header_p[1];
-
 INTERNAL otrng_err otrng_build_query_message(string_p *dst,
                                              const string_p message,
                                              otrng_s *otr);
 
-INTERNAL otrng_response_s *otrng_response_new(void);
-
-INTERNAL void otrng_response_free(otrng_response_s *response);
-
-INTERNAL otrng_err otrng_receive_defragmented_message(
-    otrng_response_s *response, otrng_notif notif, const string_p message,
-    otrng_s *otr);
-
 INTERNAL otrng_err otrng_receive_message(otrng_response_s *response,
                                          otrng_notif notif,
                                          const string_p message, otrng_s *otr);
-
-INTERNAL otrng_err otrng_send_message(string_p *to_send, const string_p message,
-                                      otrng_notif notif, const tlv_list_s *tlvs,
-                                      uint8_t flags, otrng_s *otr);
 
 INTERNAL otrng_err otrng_close(string_p *to_send, otrng_s *otr);
 
@@ -124,9 +91,6 @@ char *
 otrng_generate_session_state_string(const otrng_shared_session_state_s *state);
 
 #ifdef OTRNG_OTRNG_PRIVATE
-
-tstatic otrng_shared_session_state_s
-otrng_get_shared_session_state(otrng_s *otr);
 
 tstatic int get_message_type(const string_p message);
 

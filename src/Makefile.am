@@ -44,6 +44,8 @@ libotr_ng_la_SOURCES = auth.c \
 		     prekey_ensemble.c \
 		     prekey_profile.c \
 		     protocol.c \
+		     receive.c \
+		     send.c \
 		     serialize.c \
 		     shake.c \
 		     smp.c \

@@ -23,6 +23,7 @@
 #include <libotr/b64.h>
 
 #include "data_message.h"
+#include "instance_tag.h"
 #include "padding.h"
 #include "random.h"
 #include "serialize.h"
@@ -35,6 +36,43 @@ otrng_conversation_new(otrng_client_state_s *state) {
   conversation->peer = NULL;
 
   return conversation;
+}
+
+INTERNAL int allow_version(const otrng_s *otr,
+                           otrng_supported_version version) {
+  return (otr->supported_versions & version);
+}
+
+INTERNAL otrng_response_s *otrng_response_new(void) {
+  otrng_response_s *response = malloc(sizeof(otrng_response_s));
+  if (!response) {
+    return NULL;
+  }
+
+  response->to_display = NULL;
+  response->to_send = NULL;
+  response->warning = OTRNG_WARN_NONE;
+  response->tlvs = NULL;
+
+  return response;
+}
+
+INTERNAL void otrng_response_free(otrng_response_s *response) {
+  if (!response) {
+    return;
+  }
+
+  if (response->to_display) {
+    free(response->to_display);
+  }
+
+  if (response->to_send) {
+    free(response->to_send);
+  }
+
+  otrng_tlv_list_free(response->tlvs);
+
+  free(response);
 }
 
 INTERNAL otrng_s *otrng_new(otrng_client_state_s *state,
@@ -118,6 +156,56 @@ INTERNAL void otrng_free(/*@only@ */ otrng_s *otr) {
   free(otr);
 }
 
+INTERNAL otrng_err generate_phi_serialized(uint8_t **dst, size_t *dst_len,
+                                           const char *phi_prime,
+                                           const char *init_msg,
+                                           uint16_t instance_tag1,
+                                           uint16_t instance_tag2) {
+
+  if (!phi_prime) {
+    return ERROR;
+  }
+
+  /*
+   * phi = smaller instance tag || larger instance tag || DATA(query message)
+   *       || phi'
+   */
+  size_t init_msg_len = init_msg ? strlen(init_msg) + 1 : 0;
+  size_t phi_prime_len = strlen(phi_prime) + 1;
+  size_t s = 4 + 4 + (4 + init_msg_len) + (4 + phi_prime_len);
+  *dst = malloc(s);
+  if (!*dst) {
+    return ERROR;
+  }
+
+  *dst_len = otrng_serialize_phi(*dst, phi_prime, init_msg, instance_tag1,
+                                 instance_tag2);
+
+  return SUCCESS;
+}
+
+tstatic otrng_shared_session_state_s
+otrng_get_shared_session_state_cb(otrng_s *otr) {
+  // TODO: this callback is required, so it will segfault if not provided
+  return otr->conversation->client->callbacks->get_shared_session_state(
+      otr->conversation);
+}
+
+INTERNAL const char *otrng_get_shared_session_state(otrng_s *otr) {
+  if (otr->shared_session_state) {
+    return otr->shared_session_state;
+  }
+
+  otrng_shared_session_state_s state = otrng_get_shared_session_state_cb(otr);
+  otr->shared_session_state = otrng_generate_session_state_string(&state);
+
+  free(state.identifier1);
+  free(state.identifier2);
+  free(state.password);
+
+  return otr->shared_session_state;
+}
+
 tstatic void create_privkey_cb_v4(const otrng_conversation_state_s *conv) {
   if (!conv || !conv->client || !conv->client->callbacks) {
     return;
@@ -137,6 +225,17 @@ tstatic void create_shared_prekey(const otrng_conversation_state_s *conv) {
   conv->client->callbacks->create_shared_prekey(conv);
 }
 
+INTERNAL otrng_err received_sender_instance_tag(uint32_t their_instance_tag,
+                                                otrng_s *otr) {
+  if (!valid_instance_tag(their_instance_tag)) {
+    return ERROR;
+  }
+
+  otr->their_instance_tag = their_instance_tag;
+
+  return SUCCESS;
+}
+
 INTERNAL void maybe_create_keys(const otrng_conversation_state_s *conv) {
   if (!conv->client->keypair) {
     create_privkey_cb_v4(conv);
@@ -151,14 +250,40 @@ INTERNAL struct goldilocks_448_point_s *our_ecdh(const otrng_s *otr) {
   return &otr->keys->our_ecdh->pub[0];
 }
 
+INTERNAL struct goldilocks_448_point_s *their_ecdh(const otrng_s *otr) {
+  return &otr->keys->their_ecdh[0];
+}
+
 INTERNAL dh_public_key_p our_dh(const otrng_s *otr) {
   return otr->keys->our_dh->pub;
+}
+
+INTERNAL dh_public_key_p their_dh(const otrng_s *otr) {
+  return otr->keys->their_dh;
+}
+
+INTERNAL void forget_our_keys(otrng_s *otr) {
+  otrng_key_manager_destroy(otr->keys);
+  otrng_key_manager_init(otr->keys);
+}
+
+INTERNAL otrng_err generate_phi_receiving(uint8_t **dst, size_t *dst_len,
+                                          otrng_s *otr) {
+  return generate_phi_serialized(
+      dst, dst_len, otrng_get_shared_session_state(otr),
+      otr->receiving_init_msg, otr->our_instance_tag, otr->their_instance_tag);
 }
 
 INTERNAL const client_profile_s *get_my_client_profile(otrng_s *otr) {
   maybe_create_keys(otr->conversation);
   otrng_client_state_s *state = otr->conversation->client;
   return otrng_client_state_get_or_create_client_profile(state);
+}
+
+INTERNAL const otrng_prekey_profile_s *get_my_prekey_profile(otrng_s *otr) {
+  maybe_create_keys(otr->conversation);
+  otrng_client_state_s *state = otr->conversation->client;
+  return otrng_client_state_get_or_create_prekey_profile(state);
 }
 
 static char *build_error_message(const char *error_code,
@@ -463,4 +588,26 @@ INTERNAL otrng_err otrng_prepare_to_send_data_message(
   free(msg);
 
   return result;
+}
+
+tstatic void gone_secure_cb_v4(const otrng_conversation_state_s *conv) {
+  if (!conv || !conv->client || !conv->client->callbacks ||
+      !conv->client->callbacks->gone_secure) {
+    return;
+  }
+
+  conv->client->callbacks->gone_secure(conv);
+}
+
+INTERNAL otrng_err double_ratcheting_init(otrng_s *otr,
+                                          const char participant) {
+  if (!otrng_key_manager_ratcheting_init(otr->keys, participant)) {
+    return ERROR;
+  }
+
+  otr->state = OTRNG_STATE_ENCRYPTED_MESSAGES;
+  gone_secure_cb_v4(otr->conversation);
+  otrng_key_manager_wipe_shared_prekeys(otr->keys);
+
+  return SUCCESS;
 }

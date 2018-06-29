@@ -26,6 +26,10 @@
 #include "instance_tag.h"
 #include "str.h"
 
+INTERNAL otrng_bool valid_instance_tag(uint32_t instance_tag) {
+  return (instance_tag > OTRNG_MIN_VALID_INSTAG);
+}
+
 API otrng_bool otrng_instag_get(otrng_instag_s *otrng_instag,
                                 const char *account, const char *protocol,
                                 FILE *filename) {

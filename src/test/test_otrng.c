@@ -313,7 +313,7 @@ void test_otrng_invokes_shared_session_state_callbacks(void) {
   otrng_s *protocol = set_up(state, ALICE_IDENTITY, 1);
 
   otrng_shared_session_state_s session;
-  session = otrng_get_shared_session_state(protocol);
+  session = otrng_get_shared_session_state_cb(protocol);
 
   otrng_assert_cmpmem(session.identifier1, "alice",
                       strlen(session.identifier1));

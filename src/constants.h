@@ -72,4 +72,24 @@
 
 #define MSGFLAGS_IGNORE_UNREADABLE 0x01
 
+#define WHITESPACE_TAG_BASE_BYTES 16
+#define WHITESPACE_TAG_VERSION_BYTES 8
+#define WHITESPACE_TAG_MAX_BYTES                                               \
+  (WHITESPACE_TAG_BASE_BYTES + 2 * WHITESPACE_TAG_VERSION_BYTES)
+
+#define INSTANCE_TAG_BASE                                                      \
+  ("\x20\x09\x20\x20\x09\x09"                                                  \
+   "\x09\x09\x20\x09\x20\x09"                                                  \
+   "\x20\x09\x20\x20\0")
+
+#define INSTANCE_TAG_V3                                                        \
+  ("\x20\x20\x09\x09\x20"                                                      \
+   "\x20\x09\x09\0")
+
+#define INSTANCE_TAG_V4                                                        \
+  ("\x20\x20\x09\x09\x20"                                                      \
+   "\x09\x20\x20\0")
+
+#define QUERY_HEADER "?OTRv"
+
 #endif
